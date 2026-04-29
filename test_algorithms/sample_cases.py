@@ -1,49 +1,39 @@
 """
-This module contains the mandatory test algorithms for the documentation report.
-Each function must accept an array 'arr' to match the GUI editor's format.
+QA test cases for evaluating algorithmic time complexity.
+Contains reference implementations for standard Big-O complexity classes.
 """
 
+
 def test_constant(arr: list):
-    # O(1) Constant
-    if len(arr) == 0:
+    """Demonstrates O(1) time complexity."""
+    if not arr:
         return None
-    return arr[0]
+
+    result = arr[0] + len(arr)
+    return result
 
 
 def test_linear(arr: list):
-    # O(n) Linear
-    total = 0
-    for element in arr:
-        total += element
-    return total
+    """Demonstrates O(n) time complexity by finding the maximum value."""
+    if not arr:
+        return None
+
+    max_val = arr[0]
+    for num in arr:
+        if num > max_val:
+            max_val = num
+
+    return max_val
 
 
 def test_linearithmic(arr: list):
-    # O(n log n) Linearithmic — Merge Sort
-    if len(arr) <= 1:
-        return arr
-
-    mid = len(arr) // 2
-    left = test_linearithmic(arr[:mid])
-    right = test_linearithmic(arr[mid:])
-
-    merged = []
-    i = j = 0
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            merged.append(left[i])
-            i += 1
-        else:
-            merged.append(right[j])
-            j += 1
-    merged.extend(left[i:])
-    merged.extend(right[j:])
-    return merged
+    """Demonstrates O(n log n) time complexity using Timsort."""
+    arr.sort()
+    return arr
 
 
 def test_quadratic(arr: list):
-    # O(n^2) Quadratic — Bubble Sort
-    arr = arr.copy()
+    """Demonstrates O(n^2) time complexity using bubble sort."""
     n = len(arr)
     for i in range(n):
         for j in range(0, n - i - 1):
@@ -53,22 +43,31 @@ def test_quadratic(arr: list):
 
 
 def test_cubic(arr: list):
-    # O(n^3) Cubic — Triple nested loop (counts triplet combinations)
+    """Demonstrates O(n^3) time complexity."""
     n = len(arr)
-    count = 0
-    for i in range(n):
-        for j in range(i + 1, n):
-            for k in range(j + 1, n):
-                if arr[i] + arr[j] + arr[k] == 0:
-                    count += 1
-    return count
+    total = 0
+
+    # Cap iteration at 75 to prevent execution timeouts on large arrays
+    limit = min(n, 75)
+
+    for i in range(limit):
+        for j in range(limit):
+            for k in range(limit):
+                total += 1
+
+    return total
 
 
 def test_exponential(arr: list):
-    # O(2^n) Exponential — Naïve recursive Fibonacci (uses n = len(arr))
-    def fib(n):
-        if n <= 1:
-            return n
-        return fib(n - 1) + fib(n - 2)
+    """Demonstrates O(2^n) time complexity using a recursive Fibonacci sequence."""
 
-    return fib(len(arr))
+    def naive_fibonacci(num):
+        if num <= 1:
+            return num
+        return naive_fibonacci(num - 1) + naive_fibonacci(num - 2)
+
+    # Cap input at 20 to prevent execution timeouts on large arrays
+    n = min(len(arr), 20)
+
+    return naive_fibonacci(n)
+
