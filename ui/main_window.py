@@ -419,10 +419,35 @@ class App(ctk.CTk):
         self._cand_inner = ctk.CTkFrame(self._cand_card, fg_color="transparent")
         self._cand_inner.pack(fill="x", padx=14, pady=(0, 10))
 
-        chart_card = ctk.CTkFrame(outer, fg_color=_BG_CARD, corner_radius=8)
+        # Output card — shown only in Manual mode
+        self._output_card = ctk.CTkFrame(outer, fg_color=_BG_CARD, corner_radius=8)
+        self._output_card.pack(fill="x", padx=12, pady=(8, 0))
+        ctk.CTkLabel(
+            self._output_card,
+            text="OUTPUT",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            text_color=_TEXT_DIM,
+        ).pack(anchor="nw", padx=14, pady=(10, 4))
+
+        self._output_box = ctk.CTkTextbox(
+            self._output_card,
+            height=90,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            text_color=_GREEN,
+            fg_color=_BG_DEEP,
+            corner_radius=6,
+            state="disabled",
+            wrap="word",
+        )
+        self._output_box.pack(fill="x", padx=14, pady=(0, 12))
+        self._output_card.pack_forget()   # hidden until Manual run
+
+        self._chart_card = ctk.CTkFrame(outer, fg_color=_BG_CARD, corner_radius=8)
+        chart_card = self._chart_card
         chart_card.pack(fill="both", expand=True, padx=12, pady=(8, 12))
 
-        stat_row = ctk.CTkFrame(chart_card, fg_color="transparent")
+        self._stat_row = ctk.CTkFrame(chart_card, fg_color="transparent")
+        stat_row = self._stat_row
         stat_row.pack(side="bottom", fill="x", padx=10, pady=(4, 10))
         stat_row.grid_columnconfigure((0, 1, 2), weight=1)
 
@@ -444,12 +469,18 @@ class App(ctk.CTk):
         """Callback to parse execution results and update UI metrics."""
         # Handle execution exceptions
         if payload.get("type") == "error":
+            self._output_card.pack_forget()
+            self._stat_row.pack_forget() if mode == "Manual" else None
             self.complexity_display.configure(text="Execution Error", text_color=_RED)
             self.desc_label.configure(text=payload.get("message", "Unknown error"))
             self.plotter.clear_plot()
             return
 
         if mode == "Auto":
+            # Hide output card, show stat row
+            self._output_card.pack_forget()
+            self._stat_row.pack(side="bottom", fill="x", padx=10, pady=(4, 10))
+
             # Parse automated benchmarking metrics
             m = payload["metrics"]
             res_b = analyzer.identify_complexity(m["sizes"], m["sorted_times"])
@@ -488,9 +519,27 @@ class App(ctk.CTk):
             self.complexity_display.configure(text="Manual ✓", text_color=_ACCENT)
             self.desc_label.configure(text=f"Runtime: {_ns_to_str(t)}")
 
-            for s in [self._stat_best, self._stat_avg, self._stat_worst]:
-                s.update(_ns_to_str(t), subtitle="")
+            self._stat_row.pack_forget()
             self.plotter.clear_plot()
+
+            # Build output text: return value + any console output
+            ret_val = r.get("output")
+            console = r.get("console_output", "").strip()
+            lines = []
+            if ret_val is not None:
+                lines.append(f"Return value:  {ret_val!r}")
+            if console:
+                lines.append(f"\nConsole output:\n{console}")
+            output_text = "\n".join(lines) if lines else "(no return value)"
+
+            self._output_box.configure(state="normal")
+            self._output_box.delete("1.0", "end")
+            self._output_box.insert("1.0", output_text)
+            self._output_box.configure(state="disabled")
+
+            # Show output card just above the chart card
+            self._output_card.pack(fill="x", padx=12, pady=(8, 0),
+                                   before=self._chart_card)
 
     def _update_confidence(self, score: float, color: str):
         self._conf_track.update_idletasks()
@@ -547,7 +596,8 @@ class App(ctk.CTk):
     def _parse_manual_array(self):
         raw = self.array_entry.get().strip()
         if not raw:
-            return [10, 2, 8, 1, 5, 9], ""
+            # Replaced the default array with an error trigger
+            return None, "Please enter an array first."
         try:
             return [int(x.strip()) for x in raw.split(",")], ""
         except ValueError:
